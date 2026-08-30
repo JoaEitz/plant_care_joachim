@@ -1,0 +1,170 @@
+create_plant:
+  name: Create plant
+  description: >
+    Creates a new Plant Care plant programmatically.
+    Duplicate plant names receive unique internal IDs automatically.
+
+  fields:
+
+    plant_name:
+      name: Plant name
+      required: true
+      selector:
+        text:
+
+    area_name:
+      name: Room
+      description: >
+        Home Assistant area assigned to the new plant.
+      required: false
+      selector:
+        text:
+
+    image_media_content_id:
+      name: Plant image
+      description: >
+        Local Home Assistant media-source image used as the plant photo.
+      required: false
+      selector:
+        text:
+
+    watering_interval_days:
+      name: Watering interval
+      required: false
+      default: 7
+      selector:
+        number:
+          min: 0
+          max: 365
+          step: 1
+          mode: box
+          unit_of_measurement: days
+
+    fertilizing_interval_days:
+      name: Fertilizing interval
+      required: false
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 365
+          step: 1
+          mode: box
+          unit_of_measurement: days
+
+    moisture_min:
+      name: Minimum soil moisture
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+          unit_of_measurement: "%"
+
+    moisture_max:
+      name: Maximum soil moisture
+      required: false
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+          unit_of_measurement: "%"
+
+    humidity_min:
+      name: Minimum humidity
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+          unit_of_measurement: "%"
+
+    humidity_max:
+      name: Maximum humidity
+      required: false
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+          unit_of_measurement: "%"
+
+    temp_min:
+      name: Minimum temperature
+      required: false
+      default: 10
+      selector:
+        number:
+          min: -20
+          max: 60
+          step: 0.5
+          mode: box
+          unit_of_measurement: "°C"
+
+    temp_max:
+      name: Maximum temperature
+      required: false
+      default: 30
+      selector:
+        number:
+          min: -20
+          max: 60
+          step: 0.5
+          mode: box
+          unit_of_measurement: "°C"
+
+    light_min:
+      name: Minimum light
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 200000
+          step: 100
+          mode: box
+          unit_of_measurement: lx
+
+    light_max:
+      name: Maximum light
+      required: false
+      default: 100000
+      selector:
+        number:
+          min: 0
+          max: 200000
+          step: 100
+          mode: box
+          unit_of_measurement: lx
+
+    temp_entity_id:
+      name: Temperature sensor
+      required: false
+      selector:
+        entity:
+          domain: sensor
+
+    humidity_entity_id:
+      name: Humidity sensor
+      required: false
+      selector:
+        entity:
+          domain: sensor
+
+    moisture_entity_id:
+      name: Soil moisture sensor
+      required: false
+      selector:
+        entity:
+          domain: sensor
