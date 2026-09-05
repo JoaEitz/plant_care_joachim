@@ -12,6 +12,13 @@ create_plant:
       selector:
         text:
 
+    plant_species:
+      name: Species
+      description: Optional botanical or common species name.
+      required: false
+      selector:
+        text:
+
     area_name:
       name: Room
       description: >
@@ -168,3 +175,96 @@ create_plant:
       selector:
         entity:
           domain: sensor
+
+    light_entity_id:
+      name: Illuminance sensor
+      required: false
+      selector:
+        entity:
+          domain: sensor
+
+    conductivity_entity_id:
+      name: Conductivity sensor
+      required: false
+      selector:
+        entity:
+          domain: sensor
+
+analyze_plant:
+  name: Analyze plant health
+  description: >
+    Analyzes a current plant image together with care state and aggregated sensor
+    history, persists the result, and updates the plant's AI entities.
+  supports_response: optional
+  target:
+    device:
+      integration: plant_care
+  fields:
+    plant_id:
+      name: Plant ID
+      description: Stable Plant Care ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+    config_entry_id:
+      name: Config entry ID
+      description: Plant Care config entry ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+    image_entity:
+      name: Image entity
+      description: Optional camera or image entity overriding the configured source.
+      required: false
+      selector:
+        entity:
+          domain:
+            - camera
+            - image
+    image_media_content_id:
+      name: Local media image
+      description: >
+        Optional media-source://media_source/local/... ID overriding the configured source.
+      required: false
+      selector:
+        text:
+    image_path:
+      name: Image file path
+      description: >
+        Optional Home Assistant allowlisted local file path overriding the configured source.
+      required: false
+      advanced: true
+      selector:
+        text:
+
+get_analysis_history:
+  name: Get plant analysis history
+  description: Returns a bounded list of persisted AI analyses for a future frontend.
+  supports_response: only
+  target:
+    device:
+      integration: plant_care
+  fields:
+    plant_id:
+      name: Plant ID
+      description: Stable Plant Care ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+    config_entry_id:
+      name: Config entry ID
+      description: Plant Care config entry ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+    limit:
+      name: Limit
+      description: Number of recent analyses to return.
+      required: false
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+          mode: box

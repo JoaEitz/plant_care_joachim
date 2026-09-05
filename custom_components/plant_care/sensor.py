@@ -5,13 +5,14 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import EntityCategory
 
+from .ai.models import PlantAnalysis
 from .const import (
     DOMAIN,
-    TASK_WATERING,
-    TASK_FERTILIZING,
-    OPT_TEMP_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
     OPT_MOISTURE_ENTITY_ID,
+    OPT_TEMP_ENTITY_ID,
+    TASK_FERTILIZING,
+    TASK_WATERING,
 )
 from .device import PlantCareEntity
 
@@ -35,7 +36,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             PlantCareNextDueDateSensor(entry, coordinator, TASK_WATERING),
             PlantCareLastDoneSensor(entry, coordinator, TASK_FERTILIZING),
             PlantCareNextDueDateSensor(entry, coordinator, TASK_FERTILIZING),
-            # Env deviation sensors (disabled-by-default if no external sensor configured)
+            # Environment deviation sensors. Disabled by default without a source.
             PlantCareEnvDeviationSensor(
                 entry, coordinator, "temperature", unit="°C", icon="mdi:thermometer"
             ),
@@ -45,6 +46,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
             PlantCareEnvDeviationSensor(
                 entry, coordinator, "moisture", unit="%", icon="mdi:flower"
             ),
+            PlantCareAIHealthScoreSensor(entry, coordinator),
+            PlantCareAIStatusSensor(entry, coordinator),
+            PlantCareAIConfidenceSensor(entry, coordinator),
+            PlantCareAIDiagnosisSensor(entry, coordinator),
+            PlantCareAILastAnalysisSensor(entry, coordinator),
         ]
     )
 
@@ -175,3 +181,110 @@ class PlantCareEnvDeviationSensor(PlantCareEntity, SensorEntity):
             "min": m.get("min"),
             "max": m.get("max"),
         }
+
+
+class PlantCareAnalysisSensor(PlantCareEntity, SensorEntity):
+    """Base class for entities backed by the latest stored analysis."""
+
+    def __init__(self, entry, coordinator, suffix: str, name: str, icon: str):
+        super().__init__(entry, coordinator)
+        plant_id = entry.data.get("plant_id", entry.entry_id)
+        plant_name = entry.data.get("plant_name", "Plant")
+        self._attr_name = f"{plant_name} {name}"
+        self._attr_unique_id = f"{plant_id}_{suffix}"
+        self._attr_suggested_object_id = f"{plant_id}_{suffix}"
+        self._attr_icon = icon
+
+    @property
+    def analysis(self) -> PlantAnalysis | None:
+        return (self.coordinator.data or {}).get("analysis")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.analysis is not None
+
+
+class PlantCareAIHealthScoreSensor(PlantCareAnalysisSensor):
+    def __init__(self, entry, coordinator):
+        super().__init__(
+            entry, coordinator, "ai_health_score", "AI Health Score", "mdi:leaf"
+        )
+
+    @property
+    def native_value(self):
+        return self.analysis.health_score if self.analysis else None
+
+
+class PlantCareAIStatusSensor(PlantCareAnalysisSensor):
+    def __init__(self, entry, coordinator):
+        super().__init__(
+            entry, coordinator, "ai_status", "AI Status", "mdi:heart-pulse"
+        )
+
+    @property
+    def native_value(self):
+        return self.analysis.status if self.analysis else None
+
+
+class PlantCareAIConfidenceSensor(PlantCareAnalysisSensor):
+    _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, entry, coordinator):
+        super().__init__(
+            entry, coordinator, "ai_confidence", "AI Confidence", "mdi:gauge"
+        )
+
+    @property
+    def native_value(self):
+        return round(self.analysis.confidence * 100) if self.analysis else None
+
+
+class PlantCareAIDiagnosisSensor(PlantCareAnalysisSensor):
+    def __init__(self, entry, coordinator):
+        super().__init__(
+            entry, coordinator, "ai_diagnosis", "AI Diagnosis", "mdi:stethoscope"
+        )
+
+    @property
+    def native_value(self):
+        if not self.analysis:
+            return None
+        return (self.analysis.primary_issue or self.analysis.summary)[:255]
+
+    @property
+    def extra_state_attributes(self):
+        analysis = self.analysis
+        if analysis is None:
+            return {}
+        return {
+            "primary_issue": analysis.primary_issue,
+            "summary": analysis.summary,
+            "observations": list(analysis.observations),
+            "recommended_actions": list(analysis.recommended_actions),
+            "urgency": analysis.urgency,
+            "watering_recommendation": (
+                analysis.watering.recommendation if analysis.watering else None
+            ),
+            "watering_reason": (
+                analysis.watering.reason if analysis.watering else None
+            ),
+        }
+
+
+class PlantCareAILastAnalysisSensor(PlantCareAnalysisSensor):
+    _attr_device_class = "timestamp"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry, coordinator):
+        super().__init__(
+            entry,
+            coordinator,
+            "ai_last_analysis",
+            "AI Last Analysis",
+            "mdi:clock-check-outline",
+        )
+
+    @property
+    def native_value(self):
+        return self.analysis.analyzed_at if self.analysis else None

@@ -8,6 +8,7 @@
         "description": "Lege eine neue Pflanze an und definiere ihre Pflegeparameter.",
         "data": {
           "plant_name": "Name der Pflanze",
+          "plant_species": "Art (optional)",
           "watering_interval_days": "Gießintervall (Tage)",
           "fertilizing_interval_days": "Düngeintervall (Tage)",
           "moisture_min": "Minimale Bodenfeuchte (%)",
@@ -20,7 +21,9 @@
           "light_max": "Maximale Lichtstärke (lx)",
           "temp_entity_id": "Temperatursensor",
           "humidity_entity_id": "Luftfeuchtigkeitssensor",
-          "moisture_entity_id": "Bodenfeuchtesensor"
+          "moisture_entity_id": "Bodenfeuchtesensor",
+          "light_entity_id": "Beleuchtungsstärkesensor",
+          "conductivity_entity_id": "Leitfähigkeitssensor"
         }
       }
     },
@@ -32,14 +35,28 @@
   "options": {
     "step": {
       "init": {
-        "title": "Optionale Sensoren",
-        "description": "Wähle optionale externe Sensoren für diese Pflanze.",
+        "title": "Pflanzensensoren und KI-Analyse",
+        "description": "Wähle Sensor- und Bildquellen und konfiguriere die KI-Gesundheitsanalyse.",
         "data": {
+          "plant_species": "Art (optional)",
           "temp_entity_id": "Temperatursensor",
           "humidity_entity_id": "Luftfeuchtigkeitssensor",
-          "moisture_entity_id": "Bodenfeuchtesensor"
+          "moisture_entity_id": "Bodenfeuchtesensor",
+          "light_entity_id": "Beleuchtungsstärkesensor",
+          "conductivity_entity_id": "Leitfähigkeitssensor",
+          "ai_enabled": "KI-Gesundheitsanalyse aktivieren",
+          "ai_provider": "KI-Anbieter",
+          "ai_api_key": "OpenAI-API-Schlüssel",
+          "ai_model": "OpenAI-Modell",
+          "ai_history_days": "Verlaufsfenster (Tage)",
+          "ai_previous_analysis_limit": "Einbezogene frühere Analysen",
+          "ai_image_entity_id": "Standard-Kamera- oder Bildeinheit",
+          "ai_image_media_content_id": "Standard-ID für lokale Medien"
         }
       }
+    },
+    "error": {
+      "missing_api_key": "Gib einen OpenAI-API-Schlüssel ein, bevor du die KI-Analyse aktivierst."
     }
   },
 
@@ -65,6 +82,21 @@
       },
       "moisture_deviation": {
         "name": "Bodenfeuchteabweichung"
+      },
+      "ai_health_score": {
+        "name": "KI-Gesundheitswert"
+      },
+      "ai_status": {
+        "name": "KI-Status"
+      },
+      "ai_confidence": {
+        "name": "KI-Konfidenz"
+      },
+      "ai_diagnosis": {
+        "name": "KI-Diagnose"
+      },
+      "ai_last_analysis": {
+        "name": "Letzte KI-Analyse"
       }
     },
 
@@ -83,6 +115,9 @@
       },
       "moisture_out_of_range": {
         "name": "Bodenfeuchte außerhalb des Bereichs"
+      },
+      "ai_attention_required": {
+        "name": "KI-Aufmerksamkeit erforderlich"
       }
     },
 
@@ -92,6 +127,9 @@
       },
       "fertilizing_mark_fertilized": {
         "name": "Als gedüngt markieren"
+      },
+      "ai_analyze": {
+        "name": "Pflanzengesundheit analysieren"
       }
     },
 

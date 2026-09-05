@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -10,20 +11,25 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_PLANT_ID,
     DEFAULT_OPTIONS,
-    OPT_WATERING_INTERVAL_DAYS,
+    OPT_CONDUCTIVITY_ENTITY_ID,
     OPT_FERTILIZING_INTERVAL_DAYS,
-    OPT_TEMP_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
-    OPT_MOISTURE_ENTITY_ID,
-    OPT_TEMP_MIN,
-    OPT_TEMP_MAX,
-    OPT_HUMIDITY_MIN,
     OPT_HUMIDITY_MAX,
-    OPT_MOISTURE_MIN,
+    OPT_HUMIDITY_MIN,
+    OPT_LIGHT_ENTITY_ID,
+    OPT_LIGHT_MAX,
+    OPT_LIGHT_MIN,
+    OPT_MOISTURE_ENTITY_ID,
     OPT_MOISTURE_MAX,
-    TASK_WATERING,
+    OPT_MOISTURE_MIN,
+    OPT_TEMP_ENTITY_ID,
+    OPT_TEMP_MAX,
+    OPT_TEMP_MIN,
+    OPT_WATERING_INTERVAL_DAYS,
     TASK_FERTILIZING,
+    TASK_WATERING,
 )
 from .storage import PlantCareStorage
 
@@ -42,7 +48,7 @@ class PlantCareCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator for plant care.
 
     Updates:
-    - every hour (env checks)
+    - every 15 minutes (environment checks)
     - plus manual refresh via buttons/config changes (async_refresh())
     - plus your daily trigger at 03:00 (handled in __init__.py)
     """
@@ -120,9 +126,10 @@ class PlantCareCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if st is None:
                 return None
             try:
-                return float(st.state)
+                value = float(st.state)
             except (ValueError, TypeError):
                 return None
+            return value if math.isfinite(value) else None
 
         def _compute_bounds(
             value: float | None, min_v: float, max_v: float
@@ -172,10 +179,16 @@ class PlantCareCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         temp_entity = (self.entry.options.get(OPT_TEMP_ENTITY_ID) or "").strip()
         humidity_entity = (self.entry.options.get(OPT_HUMIDITY_ENTITY_ID) or "").strip()
         moisture_entity = (self.entry.options.get(OPT_MOISTURE_ENTITY_ID) or "").strip()
+        light_entity = (self.entry.options.get(OPT_LIGHT_ENTITY_ID) or "").strip()
+        conductivity_entity = (
+            self.entry.options.get(OPT_CONDUCTIVITY_ENTITY_ID) or ""
+        ).strip()
 
         temp_value = _read_float_state(temp_entity)
         humidity_value = _read_float_state(humidity_entity)
         moisture_value = _read_float_state(moisture_entity)
+        light_value = _read_float_state(light_entity)
+        conductivity_value = _read_float_state(conductivity_entity)
 
         temp_min = float(self.get_number(OPT_TEMP_MIN))
         temp_max = float(self.get_number(OPT_TEMP_MAX))
@@ -183,14 +196,26 @@ class PlantCareCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         humidity_max = float(self.get_number(OPT_HUMIDITY_MAX))
         moisture_min = float(self.get_number(OPT_MOISTURE_MIN))
         moisture_max = float(self.get_number(OPT_MOISTURE_MAX))
+        light_min = float(self.get_number(OPT_LIGHT_MIN))
+        light_max = float(self.get_number(OPT_LIGHT_MAX))
 
         env = {
             "temperature": _compute_bounds(temp_value, temp_min, temp_max),
             "humidity": _compute_bounds(humidity_value, humidity_min, humidity_max),
             "moisture": _compute_bounds(moisture_value, moisture_min, moisture_max),
+            "illuminance": _compute_bounds(light_value, light_min, light_max),
+            "conductivity": {
+                "value": conductivity_value,
+                "min": None,
+                "max": None,
+                "out_of_range": None,
+                "deviation": None,
+            },
         }
 
         plant_name = self.entry.data.get("plant_name", "Plant")
+        plant_id = str(self.entry.data.get(CONF_PLANT_ID, self.entry.entry_id))
+        analysis = await self.storage.async_get_latest_analysis(plant_id)
 
         return {
             "plant_name": plant_name,
@@ -199,4 +224,5 @@ class PlantCareCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 TASK_FERTILIZING: fertilizing,
             },
             "env": env,
+            "analysis": analysis,
         }

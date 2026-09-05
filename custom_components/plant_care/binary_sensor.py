@@ -4,13 +4,14 @@ from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 
+from .ai.models import PlantAnalysis
 from .const import (
     DOMAIN,
-    TASK_WATERING,
-    TASK_FERTILIZING,
-    OPT_TEMP_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
     OPT_MOISTURE_ENTITY_ID,
+    OPT_TEMP_ENTITY_ID,
+    TASK_FERTILIZING,
+    TASK_WATERING,
 )
 from .device import PlantCareEntity
 
@@ -26,6 +27,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "temperature"),
             PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "humidity"),
             PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "moisture"),
+            PlantCareAIAttentionRequiredBinarySensor(entry, coordinator),
         ]
     )
 
@@ -168,4 +170,41 @@ class PlantCareEnvOutOfRangeBinarySensor(PlantCareEntity, BinarySensorEntity):
             "min": m.get("min"),
             "max": m.get("max"),
             "deviation": m.get("deviation"),
+        }
+
+
+class PlantCareAIAttentionRequiredBinarySensor(PlantCareEntity, BinarySensorEntity):
+    """Show whether the latest AI analysis recommends attention."""
+
+    _attr_device_class = "problem"
+
+    def __init__(self, entry, coordinator):
+        super().__init__(entry, coordinator)
+        plant_id = entry.data.get("plant_id", entry.entry_id)
+        plant_name = entry.data.get("plant_name", "Plant")
+        self._attr_name = f"{plant_name} AI Attention Required"
+        self._attr_unique_id = f"{plant_id}_ai_attention_required"
+        self._attr_suggested_object_id = f"{plant_id}_ai_attention_required"
+        self._attr_icon = "mdi:leaf-alert"
+
+    @property
+    def analysis(self) -> PlantAnalysis | None:
+        return (self.coordinator.data or {}).get("analysis")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.analysis is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.analysis.attention_required if self.analysis else None
+
+    @property
+    def extra_state_attributes(self):
+        if self.analysis is None:
+            return {}
+        return {
+            "status": self.analysis.status,
+            "urgency": self.analysis.urgency,
+            "primary_issue": self.analysis.primary_issue,
         }

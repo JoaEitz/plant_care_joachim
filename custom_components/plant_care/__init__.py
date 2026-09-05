@@ -2,15 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import shutil
-from functools import partial
-from pathlib import Path
 
 import voluptuous as vol
-
 from homeassistant.config_entries import (
-    ConfigEntry,
     SOURCE_USER,
+    ConfigEntry,
 )
 from homeassistant.core import (
     HomeAssistant,
@@ -24,8 +20,14 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import (
     area_registry as ar,
+)
+from homeassistant.helpers import (
     config_validation as cv,
+)
+from homeassistant.helpers import (
     device_registry as dr,
+)
+from homeassistant.helpers import (
     entity_registry as er,
 )
 from homeassistant.helpers.event import (
@@ -34,29 +36,36 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.util import slugify
 
+from .ai.errors import ImageResolutionError
+from .ai.manager import PlantAnalysisManager
+from .ai.services import async_register_ai_services
 from .const import (
-    DOMAIN,
-    PLATFORMS,
-    DEFAULT_OPTIONS,
     CONF_PLANT_ID,
     CONF_PLANT_NAME,
-    OPT_WATERING_INTERVAL_DAYS,
+    DEFAULT_OPTIONS,
+    DOMAIN,
+    OPT_AI_IMAGE_MEDIA_CONTENT_ID,
+    OPT_CONDUCTIVITY_ENTITY_ID,
     OPT_FERTILIZING_INTERVAL_DAYS,
-    OPT_MOISTURE_MIN,
-    OPT_MOISTURE_MAX,
-    OPT_HUMIDITY_MIN,
-    OPT_HUMIDITY_MAX,
-    OPT_TEMP_MIN,
-    OPT_TEMP_MAX,
-    OPT_LIGHT_MIN,
-    OPT_LIGHT_MAX,
-    OPT_TEMP_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
+    OPT_HUMIDITY_MAX,
+    OPT_HUMIDITY_MIN,
+    OPT_LIGHT_ENTITY_ID,
+    OPT_LIGHT_MAX,
+    OPT_LIGHT_MIN,
     OPT_MOISTURE_ENTITY_ID,
+    OPT_MOISTURE_MAX,
+    OPT_MOISTURE_MIN,
+    OPT_PLANT_SPECIES,
+    OPT_TEMP_ENTITY_ID,
+    OPT_TEMP_MAX,
+    OPT_TEMP_MIN,
+    OPT_WATERING_INTERVAL_DAYS,
+    PLATFORMS,
 )
 from .coordinator import PlantCareCoordinator
+from .image import async_copy_plant_image as _copy_plant_image
 from .storage import PlantCareStorage
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +90,10 @@ CREATE_PLANT_SCHEMA = vol.Schema(
     {
         vol.Required(
             CONF_PLANT_NAME
+        ): cv.string,
+
+        vol.Optional(
+            OPT_PLANT_SPECIES
         ): cv.string,
 
         vol.Optional(
@@ -197,6 +210,14 @@ CREATE_PLANT_SCHEMA = vol.Schema(
 
         vol.Optional(
             OPT_MOISTURE_ENTITY_ID
+        ): cv.string,
+
+        vol.Optional(
+            OPT_LIGHT_ENTITY_ID
+        ): cv.string,
+
+        vol.Optional(
+            OPT_CONDUCTIVITY_ENTITY_ID
         ): cv.string,
     }
 )
@@ -439,159 +460,6 @@ async def _normalize_entity_ids(
             changed,
             plant_id,
         )
-
-
-# ============================================================
-# LOCAL MEDIA
-# ============================================================
-
-def _get_local_media_directory(
-    hass: HomeAssistant,
-) -> Path:
-
-    media_dirs = (
-        hass.config.media_dirs
-    )
-
-    local = media_dirs.get(
-        "local"
-    )
-
-    if local:
-        return Path(
-            local
-        )
-
-    if media_dirs:
-        return Path(
-            next(
-                iter(
-                    media_dirs.values()
-                )
-            )
-        )
-
-    return Path(
-        "/media"
-    )
-
-
-def _media_content_id_to_path(
-    hass: HomeAssistant,
-    media_content_id: str,
-) -> Path | None:
-
-    prefix = (
-        "media-source://"
-        "media_source/local/"
-    )
-
-    if not media_content_id.startswith(
-        prefix
-    ):
-        return None
-
-    relative = (
-        media_content_id[
-            len(prefix):
-        ]
-        .lstrip("/")
-    )
-
-    if (
-        not relative
-        or ".." in Path(
-            relative
-        ).parts
-    ):
-        return None
-
-    return (
-        _get_local_media_directory(
-            hass
-        )
-        / relative
-    )
-
-
-async def _copy_plant_image(
-    hass: HomeAssistant,
-    plant_id: str,
-    media_content_id: str,
-) -> None:
-
-    if not media_content_id:
-        return
-
-    source = (
-        _media_content_id_to_path(
-            hass,
-            media_content_id,
-        )
-    )
-
-    if source is None:
-
-        _LOGGER.warning(
-            "Unsupported plant image media source: %s",
-            media_content_id,
-        )
-
-        return
-
-    source_exists = (
-        await hass.async_add_executor_job(
-            source.exists
-        )
-    )
-
-    if not source_exists:
-
-        _LOGGER.warning(
-            "Plant image does not exist: %s",
-            source,
-        )
-
-        return
-
-    target_directory = Path(
-        hass.config.path(
-            "www",
-            "plants",
-        )
-    )
-
-    await hass.async_add_executor_job(
-        partial(
-            target_directory.mkdir,
-            parents=True,
-            exist_ok=True,
-        )
-    )
-
-    filename = (
-        plant_id.replace(
-            "_",
-            "-",
-        )
-        + ".jpg"
-    )
-
-    target = (
-        target_directory
-        / filename
-    )
-
-    await hass.async_add_executor_job(
-        shutil.copyfile,
-        source,
-        target,
-    )
-
-    _LOGGER.info(
-        "Plant image saved: %s",
-        target,
-    )
 
 
 # ============================================================
@@ -898,12 +766,23 @@ async def async_setup(
                         OPT_LIGHT_MAX
                     ]
                 ),
+
+            OPT_PLANT_SPECIES:
+                str(
+                    call.data.get(
+                        OPT_PLANT_SPECIES,
+                        "",
+                    )
+                    or ""
+                ).strip(),
         }
 
         for key in (
             OPT_TEMP_ENTITY_ID,
             OPT_HUMIDITY_ENTITY_ID,
             OPT_MOISTURE_ENTITY_ID,
+            OPT_LIGHT_ENTITY_ID,
+            OPT_CONDUCTIVITY_ENTITY_ID,
         ):
 
             value = str(
@@ -1146,11 +1025,24 @@ async def async_setup(
 
             if image_media_content_id:
 
-                await _copy_plant_image(
-                    hass,
-                    plant_id,
-                    image_media_content_id,
-                )
+                try:
+                    await _copy_plant_image(
+                        hass,
+                        plant_id,
+                        image_media_content_id,
+                    )
+                except ImageResolutionError as err:
+                    _LOGGER.warning(
+                        "Could not save the selected plant image: %s",
+                        err,
+                    )
+                else:
+                    new_options = dict(entry.options)
+                    new_options[OPT_AI_IMAGE_MEDIA_CONTENT_ID] = image_media_content_id
+                    hass.config_entries.async_update_entry(
+                        entry,
+                        options=new_options,
+                    )
 
             # --------------------------------------------------
             # WAIT FOR FINAL ENTITY ID
@@ -1224,6 +1116,8 @@ async def async_setup(
             schema=CREATE_PLANT_SCHEMA,
         )
 
+    async_register_ai_services(hass)
+
     return True
 
 
@@ -1294,6 +1188,13 @@ async def async_setup_entry(
         )
     )
 
+    analysis_manager = PlantAnalysisManager(
+        hass,
+        entry,
+        coordinator,
+        storage,
+    )
+
     hass.data[
         DOMAIN
     ][
@@ -1304,7 +1205,22 @@ async def async_setup_entry(
 
         "storage":
             storage,
+
+        "analysis_manager":
+            analysis_manager,
     }
+
+    async def _async_options_updated(
+        _hass: HomeAssistant,
+        _entry: ConfigEntry,
+    ) -> None:
+        await coordinator.async_request_refresh()
+
+    entry.async_on_unload(
+        entry.add_update_listener(
+            _async_options_updated
+        )
+    )
 
     await hass.config_entries.async_forward_entry_setups(
         entry,

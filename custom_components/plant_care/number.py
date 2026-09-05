@@ -4,18 +4,18 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import (
-    DOMAIN,
     DEFAULT_OPTIONS,
-    OPT_WATERING_INTERVAL_DAYS,
+    DOMAIN,
     OPT_FERTILIZING_INTERVAL_DAYS,
-    OPT_MOISTURE_MIN,
-    OPT_MOISTURE_MAX,
-    OPT_HUMIDITY_MIN,
     OPT_HUMIDITY_MAX,
-    OPT_TEMP_MIN,
-    OPT_TEMP_MAX,
-    OPT_LIGHT_MIN,
+    OPT_HUMIDITY_MIN,
     OPT_LIGHT_MAX,
+    OPT_LIGHT_MIN,
+    OPT_MOISTURE_MAX,
+    OPT_MOISTURE_MIN,
+    OPT_TEMP_MAX,
+    OPT_TEMP_MIN,
+    OPT_WATERING_INTERVAL_DAYS,
 )
 from .device import PlantCareEntity
 
@@ -183,4 +183,4 @@ class PlantCareConfigNumber(PlantCareEntity, NumberEntity):
         new_options = dict(self.entry.options)
         new_options[self._key] = value
         self.hass.config_entries.async_update_entry(self.entry, options=new_options)
-        await self.coordinator.async_refresh()
+        await self.coordinator.async_request_refresh()

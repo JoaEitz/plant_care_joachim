@@ -48,6 +48,19 @@ Per plant (if you assign external sensors):
 * Out-of-range binary sensors (`device_class: problem`)
 * Deviation sensors (how far outside the target range)
 
+### AI Plant Health Analysis (Optional)
+
+Per plant, Plant Care can analyze a current JPEG, PNG, or WebP image together with:
+
+* plant name, optional species, and assigned Home Assistant area
+* current temperature, humidity, soil moisture, illuminance, and conductivity values
+* compact recorder history with min/max/average, change, trend, sample count, and daily averages
+* watering and fertilizing history and due state
+* a compact summary of recent AI analyses
+
+Analysis runs only when you press the plant's **Analyze Plant Health** button or call
+`plant_care.analyze_plant`. It is never polled or scheduled automatically.
+
 ---
 
 ## Installation
@@ -94,6 +107,25 @@ All configuration is done via entities and options:
 * Intervals and targets are exposed as **Number entities**
 * Optional external sensors can be assigned in the plant device **options**
 
+### Configure AI Health Analysis
+
+Open the plant's integration entry under **Settings → Devices & services → Plant Care → Configure**.
+Each plant entry has its own AI settings:
+
+1. Enable **AI health analysis**.
+2. Select `openai` and enter an OpenAI API key.
+3. Keep the default `gpt-4o-mini` model or enter another OpenAI model that accepts image input and structured output.
+4. Choose a default `camera` or `image` entity, or enter a local media ID such as
+   `media-source://media_source/local/plants/peace-lily.jpg`.
+5. Optionally change the 14-day history window and the number of previous analyses (default 3).
+
+If a plant was created through `plant_care.create_plant` with `image_media_content_id`, that local
+media image is saved as its default analysis source. Existing copied plant images in
+`/config/www/plants/` are also detected as a backward-compatible fallback.
+
+The OpenAI API key is stored in the plant's Home Assistant config-entry options. It is never logged.
+The request uses OpenAI's Responses API with response storage disabled.
+
 ---
 
 ## Entities
@@ -115,6 +147,10 @@ Each plant device exposes the following entities.
 
 * `button.<plant_id>_watering_mark_watered`
 * `button.<plant_id>_fertilizing_mark_fertilized`
+* `button.<plant_id>_ai_analyze`
+
+The AI button uses the default image configured in the plant options. If no image is available,
+Home Assistant reports a clear service error.
 
 #### Binary Sensors (Tasks)
 
@@ -132,6 +168,78 @@ Attributes on task sensors:
 * `sensor.<plant_id>_watering_next`
 * `sensor.<plant_id>_fertilizing_last`
 * `sensor.<plant_id>_fertilizing_next`
+
+#### AI Analysis Results
+
+* `sensor.<plant_id>_ai_health_score` — integer from 0 to 100
+* `sensor.<plant_id>_ai_status` — `healthy`, `watch`, `stressed`, `critical`, or `unknown`
+* `sensor.<plant_id>_ai_confidence` — confidence from 0 to 100%
+* `sensor.<plant_id>_ai_diagnosis` — short primary issue or summary
+* `sensor.<plant_id>_ai_last_analysis` — timestamp of the last successful analysis
+* `binary_sensor.<plant_id>_ai_attention_required`
+
+The diagnosis sensor exposes the latest summary, observations, recommendations, urgency, and
+watering advice as attributes. Full analysis history is deliberately kept out of entity attributes.
+Use `plant_care.get_analysis_history` to retrieve up to the 20 retained analyses.
+
+### AI Service Examples
+
+Target the existing plant device and optionally override its configured image:
+
+```yaml
+action: plant_care.analyze_plant
+target:
+  device_id: YOUR_PLANT_DEVICE_ID
+data:
+  image_entity: camera.peace_lily_current
+```
+
+Use a local Home Assistant media item:
+
+```yaml
+action: plant_care.analyze_plant
+data:
+  plant_id: peace_lily
+  image_media_content_id: media-source://media_source/local/plants/peace-lily.jpg
+```
+
+An allowlisted local file path is also supported for scripts:
+
+```yaml
+action: plant_care.analyze_plant
+data:
+  plant_id: peace_lily
+  image_path: /config/www/plants/peace-lily.jpg
+```
+
+Retrieve bounded history for a future dashboard or script:
+
+```yaml
+action: plant_care.get_analysis_history
+data:
+  plant_id: peace_lily
+  limit: 5
+response_variable: plant_analysis_history
+```
+
+`plant_care.analyze_plant` also supports an optional response. When requested, it returns the newly
+stored analysis object.
+
+### Privacy, Cost, and Limitations
+
+When analysis is triggered, the selected image, plant metadata, current measurements, aggregated
+sensor history, care timestamps, and compact prior analysis summaries are sent to OpenAI. Review
+OpenAI's data and privacy terms before enabling the feature. Raw recorder state changes are not sent;
+Plant Care sends aggregates and daily averages to limit tokens and cost. Images are limited to 10 MB.
+
+AI diagnosis is advisory and can be wrong. It cannot inspect roots, soil structure, pests hidden from
+the image, or conditions that are not represented by configured sensors. Treat urgent or repeated
+findings as prompts for closer inspection rather than definitive diagnoses.
+
+Recorder is optional. If it is unavailable, analysis continues with current measurements and care
+state. Provider authentication, quota, network, malformed-response, unavailable-image, unsupported
+format, and oversized-image failures are reported as Home Assistant errors; a failed result is never
+stored.
 
 #### Binary Sensors (Environment Problems)
 

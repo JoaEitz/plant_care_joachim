@@ -3,18 +3,20 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, TASK_WATERING, TASK_FERTILIZING
+from .const import DOMAIN, TASK_FERTILIZING, TASK_WATERING
 from .device import PlantCareEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     storage = hass.data[DOMAIN][entry.entry_id]["storage"]
+    analysis_manager = hass.data[DOMAIN][entry.entry_id]["analysis_manager"]
 
     async_add_entities(
         [
             PlantCareMarkDoneButton(entry, coordinator, storage, TASK_WATERING),
             PlantCareMarkDoneButton(entry, coordinator, storage, TASK_FERTILIZING),
+            PlantCareAIAnalyzeButton(entry, coordinator, analysis_manager),
         ]
     )
 
@@ -44,3 +46,20 @@ class PlantCareMarkDoneButton(PlantCareEntity, ButtonEntity):
         iso = dt_util.as_local(now).isoformat()
         await self.storage.set_last_done(self.entry.entry_id, self.task_type, iso)
         await self.coordinator.async_refresh()
+
+
+class PlantCareAIAnalyzeButton(PlantCareEntity, ButtonEntity):
+    """Run AI health analysis with the plant's configured image source."""
+
+    def __init__(self, entry, coordinator, analysis_manager):
+        super().__init__(entry, coordinator)
+        self.analysis_manager = analysis_manager
+        plant_id = entry.data.get("plant_id", entry.entry_id)
+        plant_name = entry.data.get("plant_name", "Plant")
+        self._attr_name = f"{plant_name} Analyze Plant Health"
+        self._attr_icon = "mdi:leaf-search"
+        self._attr_unique_id = f"{plant_id}_ai_analyze"
+        self._attr_suggested_object_id = f"{plant_id}_ai_analyze"
+
+    async def async_press(self) -> None:
+        await self.analysis_manager.async_analyze()

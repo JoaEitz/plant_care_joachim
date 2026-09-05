@@ -3,32 +3,33 @@ from __future__ import annotations
 import logging
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.util import slugify
 
 from .const import (
-    DOMAIN,
     CONF_PLANT_ID,
     CONF_PLANT_NAME,
     DEFAULT_OPTIONS,
-    OPT_WATERING_INTERVAL_DAYS,
+    DOMAIN,
+    OPT_CONDUCTIVITY_ENTITY_ID,
     OPT_FERTILIZING_INTERVAL_DAYS,
-    OPT_MOISTURE_MIN,
-    OPT_MOISTURE_MAX,
-    OPT_HUMIDITY_MIN,
-    OPT_HUMIDITY_MAX,
-    OPT_TEMP_MIN,
-    OPT_TEMP_MAX,
-    OPT_LIGHT_MIN,
-    OPT_LIGHT_MAX,
-    OPT_TEMP_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
+    OPT_HUMIDITY_MAX,
+    OPT_HUMIDITY_MIN,
+    OPT_LIGHT_ENTITY_ID,
+    OPT_LIGHT_MAX,
+    OPT_LIGHT_MIN,
     OPT_MOISTURE_ENTITY_ID,
+    OPT_MOISTURE_MAX,
+    OPT_MOISTURE_MIN,
+    OPT_PLANT_SPECIES,
+    OPT_TEMP_ENTITY_ID,
+    OPT_TEMP_MAX,
+    OPT_TEMP_MIN,
+    OPT_WATERING_INTERVAL_DAYS,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +38,10 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(
             CONF_PLANT_NAME
+        ): selector.TextSelector(),
+
+        vol.Optional(
+            OPT_PLANT_SPECIES
         ): selector.TextSelector(),
 
         vol.Optional(
@@ -153,6 +158,22 @@ STEP_USER_SCHEMA = vol.Schema(
 
         vol.Optional(
             OPT_MOISTURE_ENTITY_ID
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain="sensor"
+            )
+        ),
+
+        vol.Optional(
+            OPT_LIGHT_ENTITY_ID
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain="sensor"
+            )
+        ),
+
+        vol.Optional(
+            OPT_CONDUCTIVITY_ENTITY_ID
         ): selector.EntitySelector(
             selector.EntitySelectorConfig(
                 domain="sensor"
@@ -373,6 +394,27 @@ class PlantCareConfigFlow(
             or ""
         ).strip()
 
+        light_entity = str(
+            user_input.get(
+                OPT_LIGHT_ENTITY_ID
+            )
+            or ""
+        ).strip()
+
+        conductivity_entity = str(
+            user_input.get(
+                OPT_CONDUCTIVITY_ENTITY_ID
+            )
+            or ""
+        ).strip()
+
+        plant_species = str(
+            user_input.get(
+                OPT_PLANT_SPECIES
+            )
+            or ""
+        ).strip()
+
         #######################################################################
         # OPTIONS
         #######################################################################
@@ -456,7 +498,19 @@ class PlantCareConfigFlow(
 
             OPT_MOISTURE_ENTITY_ID:
                 moisture_entity,
+
+            OPT_LIGHT_ENTITY_ID:
+                light_entity,
+
+            OPT_CONDUCTIVITY_ENTITY_ID:
+                conductivity_entity,
+
+            OPT_PLANT_SPECIES:
+                plant_species,
         }
+
+        for key, default in DEFAULT_OPTIONS.items():
+            options.setdefault(key, default)
 
         #######################################################################
         # CONFIG ENTRY DATA
