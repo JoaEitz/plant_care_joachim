@@ -5,6 +5,7 @@ from homeassistant import config_entries
 from homeassistant.helpers import selector
 
 from .const import (
+    AI_PROVIDER_HOME_ASSISTANT,
     AI_PROVIDER_OPENAI,
     DEFAULT_OPTIONS,
     OPT_AI_API_KEY,
@@ -15,6 +16,7 @@ from .const import (
     OPT_AI_MODEL,
     OPT_AI_PREVIOUS_ANALYSIS_LIMIT,
     OPT_AI_PROVIDER,
+    OPT_AI_TASK_ENTITY_ID,
     OPT_CONDUCTIVITY_ENTITY_ID,
     OPT_HUMIDITY_ENTITY_ID,
     OPT_LIGHT_ENTITY_ID,
@@ -42,6 +44,7 @@ class PlantCareOptionsFlowHandler(config_entries.OptionsFlow):
                 OPT_CONDUCTIVITY_ENTITY_ID,
                 OPT_AI_IMAGE_ENTITY_ID,
                 OPT_AI_IMAGE_MEDIA_CONTENT_ID,
+                OPT_AI_TASK_ENTITY_ID,
                 OPT_PLANT_SPECIES,
                 OPT_AI_API_KEY,
                 OPT_AI_MODEL,
@@ -109,6 +112,9 @@ class PlantCareOptionsFlowHandler(config_entries.OptionsFlow):
         image_marker, image_selector = optional_entity(
             OPT_AI_IMAGE_ENTITY_ID, ["camera", "image"]
         )
+        ai_task_marker, ai_task_selector = optional_entity(
+            OPT_AI_TASK_ENTITY_ID, "ai_task"
+        )
         fields.update(
             {
                 vol.Required(
@@ -124,10 +130,20 @@ class PlantCareOptionsFlowHandler(config_entries.OptionsFlow):
                     ),
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[AI_PROVIDER_OPENAI],
+                        options=[
+                            {
+                                "value": AI_PROVIDER_HOME_ASSISTANT,
+                                "label": "Home Assistant AI Task (Gemini)",
+                            },
+                            {
+                                "value": AI_PROVIDER_OPENAI,
+                                "label": "OpenAI (direct)",
+                            },
+                        ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
+                ai_task_marker: ai_task_selector,
                 api_key: api_selector,
                 model_key: model_selector,
                 vol.Required(

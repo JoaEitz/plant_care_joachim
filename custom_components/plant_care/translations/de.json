@@ -29,6 +29,9 @@
     },
     "abort": {
       "already_configured": "Diese Pflanze ist bereits konfiguriert"
+    },
+    "error": {
+      "invalid_name": "Gib einen Pflanzennamen ein."
     }
   },
 
@@ -36,7 +39,7 @@
     "step": {
       "init": {
         "title": "Pflanzensensoren und KI-Analyse",
-        "description": "Wähle Sensor- und Bildquellen und konfiguriere die KI-Gesundheitsanalyse.",
+        "description": "Wähle Sensor- und Bildquellen und konfiguriere die KI-Gesundheitsanalyse. Home Assistant AI Task verwendet einen vorhandenen Anbieter wie Google Gemini ohne weiteren API-Schlüssel.",
         "data": {
           "plant_species": "Art (optional)",
           "temp_entity_id": "Temperatursensor",
@@ -46,8 +49,9 @@
           "conductivity_entity_id": "Leitfähigkeitssensor",
           "ai_enabled": "KI-Gesundheitsanalyse aktivieren",
           "ai_provider": "KI-Anbieter",
-          "ai_api_key": "OpenAI-API-Schlüssel",
-          "ai_model": "OpenAI-Modell",
+          "ai_task_entity_id": "Home-Assistant-AI-Task-Entität (optional bei festgelegtem Standard)",
+          "ai_api_key": "OpenAI-API-Schlüssel (nur direkter Anbieter)",
+          "ai_model": "OpenAI-Modell (nur direkter Anbieter)",
           "ai_history_days": "Verlaufsfenster (Tage)",
           "ai_previous_analysis_limit": "Einbezogene frühere Analysen",
           "ai_image_entity_id": "Standard-Kamera- oder Bildeinheit",

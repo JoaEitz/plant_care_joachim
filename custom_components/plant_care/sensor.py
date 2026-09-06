@@ -7,7 +7,9 @@ from homeassistant.const import EntityCategory
 
 from .ai.models import PlantAnalysis
 from .const import (
+    DEFAULT_OPTIONS,
     DOMAIN,
+    OPT_AI_ENABLED,
     OPT_HUMIDITY_ENTITY_ID,
     OPT_MOISTURE_ENTITY_ID,
     OPT_TEMP_ENTITY_ID,
@@ -29,30 +31,34 @@ def _get_task(data: dict[str, Any] | None, task_type: str):
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    async_add_entities(
-        [
-            # Task sensors
-            PlantCareLastDoneSensor(entry, coordinator, TASK_WATERING),
-            PlantCareNextDueDateSensor(entry, coordinator, TASK_WATERING),
-            PlantCareLastDoneSensor(entry, coordinator, TASK_FERTILIZING),
-            PlantCareNextDueDateSensor(entry, coordinator, TASK_FERTILIZING),
-            # Environment deviation sensors. Disabled by default without a source.
-            PlantCareEnvDeviationSensor(
-                entry, coordinator, "temperature", unit="°C", icon="mdi:thermometer"
-            ),
-            PlantCareEnvDeviationSensor(
-                entry, coordinator, "humidity", unit="%", icon="mdi:water-percent"
-            ),
-            PlantCareEnvDeviationSensor(
-                entry, coordinator, "moisture", unit="%", icon="mdi:flower"
-            ),
-            PlantCareAIHealthScoreSensor(entry, coordinator),
-            PlantCareAIStatusSensor(entry, coordinator),
-            PlantCareAIConfidenceSensor(entry, coordinator),
-            PlantCareAIDiagnosisSensor(entry, coordinator),
-            PlantCareAILastAnalysisSensor(entry, coordinator),
-        ]
-    )
+    entities = [
+        # Task sensors
+        PlantCareLastDoneSensor(entry, coordinator, TASK_WATERING),
+        PlantCareNextDueDateSensor(entry, coordinator, TASK_WATERING),
+        PlantCareLastDoneSensor(entry, coordinator, TASK_FERTILIZING),
+        PlantCareNextDueDateSensor(entry, coordinator, TASK_FERTILIZING),
+        # Environment deviation sensors. Disabled by default without a source.
+        PlantCareEnvDeviationSensor(
+            entry, coordinator, "temperature", unit="°C", icon="mdi:thermometer"
+        ),
+        PlantCareEnvDeviationSensor(
+            entry, coordinator, "humidity", unit="%", icon="mdi:water-percent"
+        ),
+        PlantCareEnvDeviationSensor(
+            entry, coordinator, "moisture", unit="%", icon="mdi:flower"
+        ),
+    ]
+    if entry.options.get(OPT_AI_ENABLED, DEFAULT_OPTIONS[OPT_AI_ENABLED]):
+        entities.extend(
+            [
+                PlantCareAIHealthScoreSensor(entry, coordinator),
+                PlantCareAIStatusSensor(entry, coordinator),
+                PlantCareAIConfidenceSensor(entry, coordinator),
+                PlantCareAIDiagnosisSensor(entry, coordinator),
+                PlantCareAILastAnalysisSensor(entry, coordinator),
+            ]
+        )
+    async_add_entities(entities)
 
 
 class PlantCareLastDoneSensor(PlantCareEntity, SensorEntity):

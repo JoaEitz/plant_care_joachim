@@ -6,7 +6,9 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 
 from .ai.models import PlantAnalysis
 from .const import (
+    DEFAULT_OPTIONS,
     DOMAIN,
+    OPT_AI_ENABLED,
     OPT_HUMIDITY_ENTITY_ID,
     OPT_MOISTURE_ENTITY_ID,
     OPT_TEMP_ENTITY_ID,
@@ -18,18 +20,18 @@ from .device import PlantCareEntity
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    async_add_entities(
-        [
-            # Due tasks
-            PlantCareDueBinarySensor(entry, coordinator, TASK_WATERING),
-            PlantCareDueBinarySensor(entry, coordinator, TASK_FERTILIZING),
-            # Env bounds (disabled-by-default if no external sensor configured)
-            PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "temperature"),
-            PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "humidity"),
-            PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "moisture"),
-            PlantCareAIAttentionRequiredBinarySensor(entry, coordinator),
-        ]
-    )
+    entities = [
+        # Due tasks
+        PlantCareDueBinarySensor(entry, coordinator, TASK_WATERING),
+        PlantCareDueBinarySensor(entry, coordinator, TASK_FERTILIZING),
+        # Env bounds (disabled-by-default if no external sensor configured)
+        PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "temperature"),
+        PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "humidity"),
+        PlantCareEnvOutOfRangeBinarySensor(entry, coordinator, "moisture"),
+    ]
+    if entry.options.get(OPT_AI_ENABLED, DEFAULT_OPTIONS[OPT_AI_ENABLED]):
+        entities.append(PlantCareAIAttentionRequiredBinarySensor(entry, coordinator))
+    async_add_entities(entities)
 
 
 class PlantCareDueBinarySensor(PlantCareEntity, BinarySensorEntity):

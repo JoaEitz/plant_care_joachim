@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from ..const import (
+    AI_PROVIDER_HOME_ASSISTANT,
     AI_PROVIDER_OPENAI,
     CONF_PLANT_ID,
     DEFAULT_OPTIONS,
@@ -17,12 +18,14 @@ from ..const import (
     OPT_AI_ENABLED,
     OPT_AI_MODEL,
     OPT_AI_PROVIDER,
+    OPT_AI_TASK_ENTITY_ID,
 )
 from ..coordinator import PlantCareCoordinator
 from ..image import PlantImageResolver
 from ..storage import PlantCareStorage
 from .context import PlantContextBuilder
 from .errors import AIConfigurationError, PlantAnalysisError
+from .home_assistant import HomeAssistantAITaskPlantAIProvider
 from .models import PlantAnalysis
 from .openai import OpenAIPlantAIProvider
 from .provider import PlantAIProvider
@@ -105,6 +108,19 @@ class PlantAnalysisManager:
         provider_name = str(
             self._entry.options.get(OPT_AI_PROVIDER, DEFAULT_OPTIONS[OPT_AI_PROVIDER])
         ).strip()
+        if provider_name == AI_PROVIDER_HOME_ASSISTANT:
+            entity_id = str(
+                self._entry.options.get(OPT_AI_TASK_ENTITY_ID, "") or ""
+            ).strip()
+            if entity_id and not entity_id.startswith("ai_task."):
+                raise AIConfigurationError(
+                    "The configured Home Assistant AI Task entity is invalid"
+                )
+            return HomeAssistantAITaskPlantAIProvider(
+                self._hass,
+                entity_id or None,
+            )
+
         if provider_name != AI_PROVIDER_OPENAI:
             raise AIConfigurationError(
                 f"Unsupported AI provider: {provider_name or 'empty'}"

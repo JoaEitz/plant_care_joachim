@@ -44,6 +44,7 @@ from .const import (
     CONF_PLANT_NAME,
     DEFAULT_OPTIONS,
     DOMAIN,
+    OPT_AI_ENABLED,
     OPT_AI_IMAGE_MEDIA_CONTENT_ID,
     OPT_CONDUCTIVITY_ENTITY_ID,
     OPT_FERTILIZING_INTERVAL_DAYS,
@@ -68,6 +69,16 @@ from .image import async_copy_plant_image as _copy_plant_image
 from .storage import PlantCareStorage
 
 _LOGGER = logging.getLogger(__name__)
+
+AI_ENTITY_UNIQUE_ID_SUFFIXES = (
+    "ai_analyze",
+    "ai_health_score",
+    "ai_status",
+    "ai_confidence",
+    "ai_diagnosis",
+    "ai_last_analysis",
+    "ai_attention_required",
+)
 
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(
@@ -460,6 +471,21 @@ async def _normalize_entity_ids(
             changed,
             plant_id,
         )
+
+
+def _remove_disabled_ai_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Remove AI entity registrations while the optional feature is disabled."""
+    registry = er.async_get(hass)
+    plant_id = str(entry.data.get(CONF_PLANT_ID, entry.entry_id))
+    ai_unique_ids = {
+        f"{plant_id}_{suffix}" for suffix in AI_ENTITY_UNIQUE_ID_SUFFIXES
+    }
+    for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity.unique_id in ai_unique_ids:
+            registry.async_remove(entity.entity_id)
 
 
 # ============================================================
@@ -1210,10 +1236,30 @@ async def async_setup_entry(
             analysis_manager,
     }
 
+    ai_was_enabled = bool(
+        entry.options.get(
+            OPT_AI_ENABLED,
+            DEFAULT_OPTIONS[OPT_AI_ENABLED],
+        )
+    )
+    if not ai_was_enabled:
+        _remove_disabled_ai_entities(hass, entry)
+
     async def _async_options_updated(
         _hass: HomeAssistant,
         _entry: ConfigEntry,
     ) -> None:
+        nonlocal ai_was_enabled
+        ai_is_enabled = bool(
+            _entry.options.get(
+                OPT_AI_ENABLED,
+                DEFAULT_OPTIONS[OPT_AI_ENABLED],
+            )
+        )
+        if ai_is_enabled != ai_was_enabled:
+            ai_was_enabled = ai_is_enabled
+            await _hass.config_entries.async_reload(_entry.entry_id)
+            return
         await coordinator.async_request_refresh()
 
     entry.async_on_unload(

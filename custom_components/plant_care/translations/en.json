@@ -37,7 +37,7 @@
     "step": {
       "init": {
         "title": "Plant sensors and AI analysis",
-        "description": "Select sensor and image sources and configure on-demand AI health analysis.",
+        "description": "Select sensor and image sources and configure on-demand AI health analysis. Home Assistant AI Task reuses an existing provider such as Google Gemini without another API key.",
         "data": {
           "plant_species": "Species (optional)",
           "temp_entity_id": "Temperature sensor",
@@ -47,8 +47,9 @@
           "conductivity_entity_id": "Conductivity sensor",
           "ai_enabled": "Enable AI health analysis",
           "ai_provider": "AI provider",
-          "ai_api_key": "OpenAI API key",
-          "ai_model": "OpenAI model",
+          "ai_task_entity_id": "Home Assistant AI Task entity (optional if a default is set)",
+          "ai_api_key": "OpenAI API key (direct provider only)",
+          "ai_model": "OpenAI model (direct provider only)",
           "ai_history_days": "History window (days)",
           "ai_previous_analysis_limit": "Previous analyses included",
           "ai_image_entity_id": "Default camera or image entity",

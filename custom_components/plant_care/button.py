@@ -3,7 +3,13 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, TASK_FERTILIZING, TASK_WATERING
+from .const import (
+    DEFAULT_OPTIONS,
+    DOMAIN,
+    OPT_AI_ENABLED,
+    TASK_FERTILIZING,
+    TASK_WATERING,
+)
 from .device import PlantCareEntity
 
 
@@ -12,13 +18,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     storage = hass.data[DOMAIN][entry.entry_id]["storage"]
     analysis_manager = hass.data[DOMAIN][entry.entry_id]["analysis_manager"]
 
-    async_add_entities(
-        [
-            PlantCareMarkDoneButton(entry, coordinator, storage, TASK_WATERING),
-            PlantCareMarkDoneButton(entry, coordinator, storage, TASK_FERTILIZING),
-            PlantCareAIAnalyzeButton(entry, coordinator, analysis_manager),
-        ]
-    )
+    entities = [
+        PlantCareMarkDoneButton(entry, coordinator, storage, TASK_WATERING),
+        PlantCareMarkDoneButton(entry, coordinator, storage, TASK_FERTILIZING),
+    ]
+    if entry.options.get(OPT_AI_ENABLED, DEFAULT_OPTIONS[OPT_AI_ENABLED]):
+        entities.append(PlantCareAIAnalyzeButton(entry, coordinator, analysis_manager))
+    async_add_entities(entities)
 
 
 class PlantCareMarkDoneButton(PlantCareEntity, ButtonEntity):

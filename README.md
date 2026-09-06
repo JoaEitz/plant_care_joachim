@@ -60,6 +60,8 @@ Per plant, Plant Care can analyze a current JPEG, PNG, or WebP image together wi
 
 Analysis runs only when you press the plant's **Analyze Plant Health** button or call
 `plant_care.analyze_plant`. It is never polled or scheduled automatically.
+AI entities are registered only for plants where AI health analysis is enabled, so
+existing dashboards do not receive unavailable AI controls.
 
 ---
 
@@ -112,19 +114,26 @@ All configuration is done via entities and options:
 Open the plant's integration entry under **Settings → Devices & services → Plant Care → Configure**.
 Each plant entry has its own AI settings:
 
-1. Enable **AI health analysis**.
-2. Select `openai` and enter an OpenAI API key.
-3. Keep the default `gpt-4o-mini` model or enter another OpenAI model that accepts image input and structured output.
+1. Configure Google Gemini's **AI Task** in Home Assistant, or select an existing
+   `ai_task` entity provided by that integration.
+2. Enable **AI health analysis** and select **Home Assistant AI Task (Gemini)**.
+3. Select the Gemini `ai_task` entity. The field can remain empty when a preferred
+   data-generation AI Task is configured in Home Assistant.
 4. Choose a default `camera` or `image` entity, or enter a local media ID such as
    `media-source://media_source/local/plants/peace-lily.jpg`.
 5. Optionally change the 14-day history window and the number of previous analyses (default 3).
+
+This route reuses Home Assistant's existing Gemini configuration and API key through
+`ai_task.generate_data`. The direct OpenAI provider remains available as an alternative; only that
+provider needs the OpenAI API key and model fields in Plant Care.
 
 If a plant was created through `plant_care.create_plant` with `image_media_content_id`, that local
 media image is saved as its default analysis source. Existing copied plant images in
 `/config/www/plants/` are also detected as a backward-compatible fallback.
 
-The OpenAI API key is stored in the plant's Home Assistant config-entry options. It is never logged.
-The request uses OpenAI's Responses API with response storage disabled.
+Plant Care never receives or duplicates Gemini credentials. When the direct OpenAI provider is
+selected, its API key is stored in the plant's Home Assistant config-entry options and is never
+logged. Direct OpenAI requests use the Responses API with response storage disabled.
 
 ---
 
@@ -228,9 +237,11 @@ stored analysis object.
 ### Privacy, Cost, and Limitations
 
 When analysis is triggered, the selected image, plant metadata, current measurements, aggregated
-sensor history, care timestamps, and compact prior analysis summaries are sent to OpenAI. Review
-OpenAI's data and privacy terms before enabling the feature. Raw recorder state changes are not sent;
-Plant Care sends aggregates and daily averages to limit tokens and cost. Images are limited to 10 MB.
+sensor history, care timestamps, and compact prior analysis summaries are sent to the provider
+behind the selected Home Assistant AI Task, such as Google Gemini, or to OpenAI when its direct
+provider is selected. Review that provider's data and privacy terms before enabling the feature.
+Raw recorder state changes are not sent; Plant Care sends aggregates and daily averages to limit
+tokens and cost. Images are limited to 10 MB.
 
 AI diagnosis is advisory and can be wrong. It cannot inspect roots, soil structure, pests hidden from
 the image, or conditions that are not represented by configured sensors. Treat urgent or repeated
