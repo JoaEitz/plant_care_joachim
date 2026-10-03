@@ -67,6 +67,7 @@ from .const import (
 from .coordinator import PlantCareCoordinator
 from .image import async_copy_plant_image as _copy_plant_image
 from .storage import PlantCareStorage
+from .watering import async_register_watering_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1143,6 +1144,7 @@ async def async_setup(
         )
 
     async_register_ai_services(hass)
+    async_register_watering_services(hass)
 
     return True
 

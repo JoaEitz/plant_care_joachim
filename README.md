@@ -11,6 +11,7 @@ The integration does not send notifications itself. Instead, it provides clear, 
 * ✅ Interval-based watering & fertilizing with due / overdue tracking
 * ✅ Optional temperature, humidity, and soil moisture monitoring
 * ✅ Fully entity-driven and automation-friendly (HA-native)
+* ✅ iPhone widget actions and a dynamic watering queue for Apple Shortcuts
 * ❌ No built-in notifications — use the automation examples below.
 
 ---
@@ -157,6 +158,10 @@ Each plant device exposes the following entities.
 * `button.<plant_id>_watering_mark_watered`
 * `button.<plant_id>_fertilizing_mark_fertilized`
 * `button.<plant_id>_ai_analyze`
+
+The watering button and `plant_care.mark_watered` use the same persisted action
+and coordinator refresh. See the [iPhone watering widget guide](docs/ios-watering-widget.md)
+for direct Companion App controls and a dynamic due-only Shortcuts flow.
 
 The AI button uses the default image configured in the plant options. If no image is available,
 Home Assistant reports a clear service error.

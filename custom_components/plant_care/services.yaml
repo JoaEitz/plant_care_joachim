@@ -190,6 +190,61 @@ create_plant:
         entity:
           domain: sensor
 
+get_watering_queue:
+  name: Get watering queue
+  description: >
+    Returns all loaded plants that are overdue, due today, or due within the
+    configured look-ahead window. Results use the existing watering schedule
+    and are ordered by urgency.
+  supports_response: only
+  fields:
+    due_soon_days:
+      name: Due-soon window
+      description: Number of future days to include after today.
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 1
+          mode: box
+          unit_of_measurement: days
+    limit:
+      name: Maximum plants
+      description: Maximum number of sorted plants to return.
+      required: false
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+          mode: box
+
+mark_watered:
+  name: Mark plant as watered
+  description: >
+    Uses the existing Plant Care watering action to update last watered,
+    recalculate next watering, and refresh the plant entities.
+  supports_response: optional
+  target:
+    device:
+      integration: plant_care
+  fields:
+    plant_id:
+      name: Plant ID
+      description: Stable Plant Care ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+    config_entry_id:
+      name: Config entry ID
+      description: Plant Care config entry ID; use this only when no device is targeted.
+      required: false
+      selector:
+        text:
+
 analyze_plant:
   name: Analyze plant health
   description: >

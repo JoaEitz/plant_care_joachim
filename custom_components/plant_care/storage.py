@@ -81,18 +81,37 @@ class PlantCareStorage:
             last_fertilized=entry.get("last_fertilized"),
         )
 
-    async def set_last_done(self, entry_id: str, task_type: str, iso_dt: str) -> None:
+    async def set_last_done(
+        self, entry_id: str, task_type: str, iso_dt: str | None
+    ) -> None:
+        """Set or restore a task timestamp without leaving failed writes in memory."""
         async with self._lock:
             data = await self.async_load()
             entry = data["entries"].setdefault(entry_id, {})
             if task_type == TASK_WATERING:
-                entry["last_watered"] = iso_dt
+                key = "last_watered"
             elif task_type == TASK_FERTILIZING:
-                entry["last_fertilized"] = iso_dt
+                key = "last_fertilized"
             else:
                 raise ValueError(f"Unknown task_type: {task_type}")
 
-            await self.async_save()
+            missing = object()
+            previous = entry.get(key, missing)
+            if iso_dt is None:
+                entry.pop(key, None)
+            else:
+                entry[key] = iso_dt
+
+            try:
+                await self.async_save()
+            except Exception:
+                if previous is missing:
+                    entry.pop(key, None)
+                else:
+                    entry[key] = previous
+                if not entry:
+                    data["entries"].pop(entry_id, None)
+                raise
 
     async def async_get_analyses(
         self,

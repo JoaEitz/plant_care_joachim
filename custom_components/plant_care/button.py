@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.util import dt as dt_util
 
 from .const import (
     DEFAULT_OPTIONS,
@@ -11,6 +10,7 @@ from .const import (
     TASK_WATERING,
 )
 from .device import PlantCareEntity
+from .watering import async_mark_task_done
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -48,10 +48,12 @@ class PlantCareMarkDoneButton(PlantCareEntity, ButtonEntity):
             self._attr_suggested_object_id = f"{plant_id}_fertilizing_mark_fertilized"
 
     async def async_press(self) -> None:
-        now = dt_util.now()
-        iso = dt_util.as_local(now).isoformat()
-        await self.storage.set_last_done(self.entry.entry_id, self.task_type, iso)
-        await self.coordinator.async_refresh()
+        await async_mark_task_done(
+            self.entry,
+            self.coordinator,
+            self.storage,
+            self.task_type,
+        )
 
 
 class PlantCareAIAnalyzeButton(PlantCareEntity, ButtonEntity):
